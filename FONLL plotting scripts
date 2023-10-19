@@ -1,0 +1,426 @@
+#########################################################
+# Python script plotting, joining and fitting FONLL Data
+#########################################################
+
+# Note that the three codes are very similar with minor changes
+# 3 codes are codes for the pt plots, eta plots and rapidity plots
+
+#########################################################
+### this is for the pt plots
+#########################################################
+
+import matplotlib.pyplot as plt
+plt.rcParams['text.usetex'] = True
+import numpy as np
+
+def plot_total_curves_with_errorbars(file_paths_list, labels_list, markers_list, colors_list, xlabel, ylabel, title, fit_degree):
+    x_list = []
+    y_total_list = []
+    y_min_list = []
+    y_max_list = []
+
+    for file_paths in file_paths_list:
+        x = []
+        y_total = []
+        y_min = []
+        y_max = []
+        for file_path in file_paths:
+            with open(file_path, 'r') as file:
+                lines = file.readlines()
+                for line in lines[14:]:
+                    values = line.split()
+                    if values[0][0].isdigit() or values[0][0] == '-':
+                        if file_path == file_paths[0]:
+                            x.append(float(values[0]))
+                            y_total.append(float(values[1]))
+                            y_min.append(float(values[2]))
+                            y_max.append(float(values[3]))
+        x_list.append(x)
+        y_total_list.append(y_total)
+        y_min_list.append(y_min)
+        y_max_list.append(y_max)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))  # Create subplots with 1 row and 2 columns
+
+    for i, (x, y_total, y_min, y_max, color) in enumerate(zip(x_list, y_total_list, y_min_list, y_max_list, colors_list)):
+        if len(x) > 1:
+            axes[0].plot(x[1:], y_total[1:], marker=markers_list[i], linestyle='none', label=labels_list[i], markersize=2, color=color)
+            axes[1].plot(x[1:], y_total[1:], marker=markers_list[i], linestyle='none', label=labels_list[i], markersize=2, color=color)
+        else:
+            axes[0].plot(x, y_total, marker=markers_list[i], linestyle='none', label=labels_list[i], markersize=2, color=color)
+            axes[1].plot(x, y_total, marker=markers_list[i], linestyle='none', label=labels_list[i], markersize=2, color=color)
+
+        combined_uncertainties = np.sqrt((np.array(y_max) - np.array(y_min))**2 + (np.array(y_total) - np.array(y_min))**2)
+        half_width = 0.51285 # this will need to change based on what n value you choose in FONLL!
+        axes[0].errorbar(x[1:], y_total[1:], yerr=combined_uncertainties[1:], xerr=half_width, fmt='none', color=color, elinewidth=1)
+        axes[1].errorbar(x[1:], y_total[1:], yerr=combined_uncertainties[1:], xerr=half_width, fmt='none', color=color, elinewidth=1)
+
+        # Fit a polynomial and print the polynomial equation
+        coeffs = np.polyfit(x[1:], np.log(y_total[1:]), fit_degree)
+        poly_str = "Poly Fit: "
+        for j, coeff in enumerate(coeffs):
+            poly_str += f"{coeff:.4f}x^{fit_degree-j} + "
+        print(poly_str[:-2])  # Remove the trailing '+'
+
+        # Plot the fitted curve on the logged plot
+        x_fit = np.linspace(min(x[1:]), max(x[1:]), 100)
+        y_fit = np.exp(np.polyval(coeffs, x_fit))
+        axes[1].plot(x_fit, y_fit, linestyle='-', color=color, alpha=0.7)
+
+    axes[0].set_xlabel(xlabel)
+    axes[0].set_ylabel(ylabel)
+    #axes[0].set_title(title + ' (Unlogged Y)')
+    axes[0].grid(True)
+    axes[0].legend()
+
+    axes[1].set_xlabel(xlabel)
+    axes[1].set_ylabel(ylabel)
+    #axes[1].set_title(title + ' (Logged Y)')
+    axes[1].grid(True)
+    axes[1].legend()
+    axes[1].set_yscale('log')
+
+    plt.tight_layout()  # Adjust spacing between subplots
+    plt.show()
+
+# Fit degree for the polynomial fit
+fit_degree = 5 # You can adjust this value as needed
+
+# Plot 1: Detector Region Total(-6,6)
+file_paths_dpt = [
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\dsigdpt_B2.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\dsigdpt_D02.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\dsigdpt_D+2.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\dsigdpt_DD2.txt'  
+]
+labels_dpt = ['Plot 1 Total']  # Only one label for the "Total" curve of Plot 1
+markers_dpt = ['s']  # Square marker for the "Total" curve of Plot 1
+colors_dpt = ['b']  # Color choice for the "Total" curve of Plot 1
+
+# Plot 2: MFT Region Total(-3.6,-2.5)
+file_paths_dpt_2 = [
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\2dsigdp_B2.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\2dsigdpt_D02.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\2dsigdpt_D+2.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\2dsigdpt_DD2.txt'  
+]
+labels_dpt_2 = ['Plot 2 Total']  # Only one label for the "Total" curve of Plot 2
+markers_dpt_2 = ['o']  # Circle marker for the "Total" curve of Plot 2
+colors_dpt_2 = ['g']  # Color choice for the "Total" curve of Plot 2
+
+# Plot 3: MS Region(-4,-2.5)
+file_paths_dpt_3 = [
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\4dsigdpt_B2.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\4dsigdpt_D02.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\4dsigdpt_D+2.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\4dsigdpt_DD2.txt'  
+]
+labels_dpt_3 = ['Plot 3 Total']  # Only one label for the "Total" curve of Plot 3
+markers_dpt_3 = ['^']  # Triangle marker for the "Total" curve of Plot 3
+colors_dpt_3 = ['r']  # Color choice for the "Total" curve of Plot 3
+
+# Plot 4: Central Barrel Region (-1,1)
+file_paths_dpt_4 = [
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\3dsigdpt_B2.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\3dsigdpt_D02.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\3dsigdpt_D+2.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\3dsigdpt_DD2.txt'  
+]
+labels_dpt_4 = ['Plot 4 Total']  # Only one label for the "Total" curve of Plot 4
+markers_dpt_4 = ['v']  # Marker for the "Total" curve of Plot 4
+colors_dpt_4 = ['c']  # Color choice for the "Total" curve of Plot 4
+
+# Plot 4: Superimposed total curves
+file_paths_list = [file_paths_dpt, file_paths_dpt_2, file_paths_dpt_3, file_paths_dpt_4]
+labels_list = ['Detector Region Total (-6,6) rapidity', 'MFT Region Total (-3.6,-2.5) rapidity', 'MS Region Total (-4,-2.5) rapidity', 'Central Barrel Total (-1,1) rapidity']
+markers_list = ['s', 'o', '^', 'v']
+colors_list = ['b', 'g', 'r', 'c']
+
+
+# Call the modified function with the updated data for Detector, MFT, MS, and Central Barrel regions
+plot_total_curves_with_errorbars(file_paths_list, labels_list, markers_list, colors_list, r'$\mathbf{p_T} (GeV/c)$'
+, r'$\mathbf{\frac{d\sigma^\mu}{dp_T}} \left(\frac{pb}{GeV/c}\right)$'
+, 'Comparison of Total Curves', fit_degree)
+
+#########################################################
+### this is for the eta plots
+#########################################################
+
+import matplotlib.pyplot as plt
+plt.rcParams['text.usetex'] = True
+import numpy as np
+
+def format_polynomial(coefficients):
+    # Create a formatted string for the polynomial function
+    polynomial_str = "Poly Fit: "
+    for i, coef in enumerate(coefficients):
+        power = len(coefficients) - 1 - i
+        if power == 0:
+            polynomial_str += f"{coef:+.4f}x^{power} "
+        else:
+            polynomial_str += f"{coef:+.4f}x^{power} "
+    return polynomial_str
+
+def plot_total_curves_with_errorbars(file_paths_list, labels_list, markers_list, colors_list, xlabel, ylabel, title):
+    x_list = []
+    y_total_list = []
+    y_min_list = []
+    y_max_list = []
+
+    for file_paths in file_paths_list:
+        x = []
+        y_total = []
+        y_min = []
+        y_max = []
+        for file_path in file_paths:
+            with open(file_path, 'r') as file:
+                lines = file.readlines()
+                for line in lines[14:]:
+                    values = line.split()
+                    if values[0][0].isdigit() or values[0][0] == '-':
+                        if file_path == file_paths[0]:
+                            x.append(float(values[0]))
+                            y_total.append(float(values[1]))
+                            y_min.append(float(values[2]))
+                            y_max.append(float(values[3]))
+        x_list.append(x)
+        y_total_list.append(y_total)
+        y_min_list.append(y_min)
+        y_max_list.append(y_max)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))  # Create subplots with 1 row and 2 columns
+
+    for i, (x, y_total, y_min, y_max, color) in enumerate(zip(x_list, y_total_list, y_min_list, y_max_list, colors_list)):
+        if len(x) > 1:
+            axes[0].plot(x[1:], y_total[1:], marker=markers_list[i], linestyle='none', label=labels_list[i], markersize=2, color=color)
+            axes[1].plot(x[1:], y_total[1:], marker=markers_list[i], linestyle='none', label=labels_list[i], markersize=2, color=color)
+        else:
+            axes[0].plot(x, y_total, marker=markers_list[i], linestyle='none', label=labels_list[i], markersize=2, color=color)
+            axes[1].plot(x, y_total, marker=markers_list[i], linestyle='none', label=labels_list[i], markersize=2, color=color)
+
+        combined_uncertainties = np.sqrt((np.array(y_max) - np.array(y_min))**2 + (np.array(y_total) - np.array(y_min))**2)
+        half_width = 0.51285
+        axes[0].errorbar(x[1:], y_total[1:], yerr=combined_uncertainties[1:], xerr=half_width, fmt='none', color=color, elinewidth=1)
+        axes[1].errorbar(x[1:], y_total[1:], yerr=combined_uncertainties[1:], xerr=half_width, fmt='none', color=color, elinewidth=1)
+
+    axes[0].set_xlabel(xlabel)
+    axes[0].set_ylabel(ylabel)
+    #axes[0].set_title(title + ' (Unlogged Y-axis)')
+    axes[0].grid(True)
+    axes[0].legend()
+
+    axes[1].set_xlabel(xlabel)
+    axes[1].set_ylabel(ylabel)
+   # axes[1].set_title(title + ' (Logged Y-axis)')
+    axes[1].grid(True)
+    axes[1].legend()
+    axes[1].set_yscale('log')
+
+    # Fit and plot polynomial curves for the logged plots
+    for i, (x, y_total, color) in enumerate(zip(x_list, y_total_list, colors_list)):
+        if len(x) > 1:
+            coefficients = np.polyfit(x[1:], np.log10(y_total[1:]), 4)  # Fit a cubic polynomial to logged data
+            polynomial_fit = np.poly1d(coefficients)
+            x_fit = np.linspace(min(x[1:]), max(x[1:]), 1000)
+            y_fit = np.power(10, polynomial_fit(x_fit))
+            axes[1].plot(x_fit, y_fit, linestyle='-', color=color, alpha=0.7, label=format_polynomial(coefficients))
+            print(format_polynomial(coefficients))
+
+    plt.tight_layout()  # Adjust spacing between subplots
+    plt.show()
+
+
+# Plot 1: Detector Region Total(-6,6)
+file_paths_deta = [
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\Fdsigdeta_B.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\Fdsigdeta_D0.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\Fdsigdeta_D+.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\Fdsigdeta_DD.txt'  
+]
+labels_deta = ['Plot 1 Total']  # Only one label for the "Total" curve of Plot 1
+markers_deta = ['s']  # Square marker for the "Total" curve of Plot 1
+
+# Plot 2: MFT Region Total(-3.6,-2.5)
+file_paths_deta_2 = [
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\2Fdsigdeta_B.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\2Fdsigdeta_D0.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\2Fdsigdeta_D+.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\2Fdsigdeta_DD.txt'  
+]
+labels_deta_2 = ['Plot 2 Total']  # Only one label for the "Total" curve of Plot 2
+markers_deta_2 = ['o']  # Circle marker for the "Total" curve of Plot 2
+
+# Plot 3: MS Region(-4,-2.5)
+file_paths_deta_3 = [
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\4Fdsigdeta_B.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\4Fdsigdeta_D0.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\4Fdsigdeta_D+.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\4Fdsigdeta_DD.txt'  
+]
+labels_deta_3 = ['Plot 3 Total']  # Only one label for the "Total" curve of Plot 3
+markers_deta_3 = ['^']  # Triangle marker for the "Total" curve of Plot 3
+
+# Plot 4: Central Barrel Region (-1,1)
+file_paths_deta_4 = [
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\3Fdsigdeta_B.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\3Fdsigdeta_D0.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\3Fdsigdeta_D+.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\3Fdsigdeta_DD.txt'  
+]
+labels_deta_4 = ['Plot 4 Total']  # Only one label for the "Total" curve of Plot 4
+markers_deta_4 = ['v']  # Marker for the "Total" curve of Plot 4
+
+
+# Define the file_paths_list, labels_list, markers_list, and colors_list
+file_paths_list = [file_paths_deta, file_paths_deta_2, file_paths_deta_3, file_paths_deta_4]
+labels_list = ['Detector Region Total (-6,6)', 'MFT Region Total (-3.6,-2.5)', 'MS Region Total (-4,-2.5)', 'Central Barrel Total (-1,1)']
+markers_list = ['s', 'o', '^', 'v']
+colors_list = ['b', 'g', 'r', 'c']
+
+# Call the modified function with the updated colors
+plot_total_curves_with_errorbars(file_paths_list, labels_list, markers_list, colors_list, r'$\mathbf{\eta}$'
+, r'$\mathbf{\frac{d\sigma^\mu}{d\eta}} \ (pb)$'
+, 'Comparison of Total Curves')
+
+#########################################################
+### this is for the rapidity plots
+#########################################################
+
+import matplotlib.pyplot as plt
+plt.rcParams['text.usetex'] = True
+import numpy as np
+
+def format_polynomial(coefficients):
+    # Create a formatted string for the polynomial function
+    polynomial_str = "Poly Fit: "
+    for i, coef in enumerate(coefficients):
+        power = len(coefficients) - 1 - i
+        if power == 0:
+            polynomial_str += f"{coef:+.4f}x^{power} "
+        else:
+            polynomial_str += f"{coef:+.4f}x^{power} "
+    return polynomial_str
+
+def plot_total_curves_with_errorbars(file_paths_list, labels_list, markers_list, colors_list, xlabel, ylabel, title):
+    x_list = []
+    y_total_list = []
+    y_min_list = []
+    y_max_list = []
+
+    for file_paths in file_paths_list:
+        x = []
+        y_total = []
+        y_min = []
+        y_max = []
+        for file_path in file_paths:
+            with open(file_path, 'r') as file:
+                lines = file.readlines()
+                for line in lines[14:]:
+                    values = line.split()
+                    if values[0][0].isdigit() or values[0][0] == '-':
+                        if file_path == file_paths[0]:
+                            x.append(float(values[0]))
+                            y_total.append(float(values[1]))
+                            y_min.append(float(values[2]))
+                            y_max.append(float(values[3]))
+        x_list.append(x)
+        y_total_list.append(y_total)
+        y_min_list.append(y_min)
+        y_max_list.append(y_max)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))  # Create subplots with 1 row and 2 columns
+
+    for i, (x, y_total, y_min, y_max, color) in enumerate(zip(x_list, y_total_list, y_min_list, y_max_list, colors_list)):
+        if len(x) > 1:
+            axes[0].plot(x[1:], y_total[1:], marker=markers_list[i], linestyle='none', label=labels_list[i], markersize=2, color=color)
+            axes[1].plot(x[1:], y_total[1:], marker=markers_list[i], linestyle='none', label=labels_list[i], markersize=2, color=color)
+        else:
+            axes[0].plot(x, y_total, marker=markers_list[i], linestyle='none', label=labels_list[i], markersize=2, color=color)
+            axes[1].plot(x, y_total, marker=markers_list[i], linestyle='none', label=labels_list[i], markersize=2, color=color)
+
+        combined_uncertainties = np.sqrt((np.array(y_max) - np.array(y_min))**2 + (np.array(y_total) - np.array(y_min))**2)
+        half_width = 0.51285
+        axes[0].errorbar(x[1:], y_total[1:], yerr=combined_uncertainties[1:], xerr=half_width, fmt='none', color=color, elinewidth=1)
+        axes[1].errorbar(x[1:], y_total[1:], yerr=combined_uncertainties[1:], xerr=half_width, fmt='none', color=color, elinewidth=1)
+
+    axes[0].set_xlabel(xlabel)
+    axes[0].set_ylabel(ylabel)
+    #axes[0].set_title(' (Unlogged Y-axis)') #unlogged
+    axes[0].grid(True)
+    axes[0].legend()
+
+    axes[1].set_xlabel(xlabel)
+    axes[1].set_ylabel(ylabel)
+    #axes[1].set_title(title)   #logged
+    axes[1].grid(True)
+    axes[1].legend()
+    axes[1].set_yscale('log')
+
+    # Fit and plot polynomial curves for the logged plots
+    for i, (x, y_total, color) in enumerate(zip(x_list, y_total_list, colors_list)):
+        if len(x) > 1:
+            coefficients = np.polyfit(x[1:], np.log10(y_total[1:]), 4)  # Fit a cubic polynomial to logged data
+            polynomial_fit = np.poly1d(coefficients)
+            x_fit = np.linspace(min(x[1:]), max(x[1:]), 1000)
+            y_fit = np.power(10, polynomial_fit(x_fit))
+            axes[1].plot(x_fit, y_fit, linestyle='-', color=color, alpha=0.7, label=format_polynomial(coefficients))
+            print(format_polynomial(coefficients))
+
+    plt.tight_layout()  # Adjust spacing between subplots
+    plt.show()
+
+# Define file paths, labels, markers, and colors for each set of data points
+file_paths_deta = [
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\Fdsigdy_B.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\Fdsigdy_D0.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\Fdsigdy_D+.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\Fdsigdy_DD.txt'  
+]
+labels_deta = ['Plot 1 Total']
+markers_deta = ['s']
+colors_deta = ['b']
+
+file_paths_deta_2 = [
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\2Fdsigdy_B.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\2Fdsigdy_D0.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\2Fdsigdy_D+.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\2Fdsigdy_DD.txt'  
+]
+labels_deta_2 = ['Plot 2 Total']
+markers_deta_2 = ['o']
+colors_deta_2 = ['g']
+
+file_paths_deta_3 = [
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\4Fdsigdy_B.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\4Fdsigdy_D0.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\4Fdsigdy_D+.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\4Fdsigdy_DD.txt'  
+]
+labels_deta_3 = ['Plot 3 Total']
+markers_deta_3 = ['^']
+colors_deta_3 = ['r']
+
+file_paths_deta_4 = [
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\3Fdsigdy_B.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\3Fdsigdy_D0.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\3Fdsigdy_D+.txt',
+    r'C:\Users\salma\OneDrive\Desktop\Code\CP 2\CP 2 Question 1\3Fdsigdy_DD.txt'  
+]
+labels_deta_4 = ['Plot 4 Total']
+markers_deta_4 = ['v']
+colors_deta_4 = ['c']
+
+# Define the file_paths_list, labels_list, markers_list, and colors_list
+file_paths_list = [file_paths_deta, file_paths_deta_2, file_paths_deta_3, file_paths_deta_4]
+labels_list = ['Detector Region Total (-6,6)', 'MFT Region Total (-3.6,-2.5)', 'MS Region Total (-4,-2.5)', 'Central Barrel Total (-1,1)']
+markers_list = ['s', 'o', '^', 'v']
+colors_list = ['b', 'g', 'r', 'c']
+
+# Call the modified function with the updated colors
+plot_total_curves_with_errorbars(file_paths_list, labels_list, markers_list, colors_list, r'$\mathbf{y}$'
+, r'$\mathbf{\frac{d\sigma^\mu}{dy}} \ (pb)$'
+, 'Comparison of Total Curves')
+
+
+
+
