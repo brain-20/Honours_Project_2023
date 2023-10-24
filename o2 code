@@ -2,6 +2,7 @@
 # This was the playground I used for o2. Ended up only using maby 15% of this code!
 # Note what is uncommented was more lickely used.
 ###################################################################################
+# version 1 (more messing around thatn in version, showing evolution of cuts)
 
 // version with kinematics
 /*
@@ -1060,3 +1061,1281 @@ WorkflowSpec defineDataProcessing(ConfigContext const& cfgc)
     adaptAnalysisTask<MyTaskMFT2>(cfgc),
   };
 }
+
+
+##############################
+version 2
+##############################
+# introducing chi2 cuts as well
+
+
+#include "Framework/runDataProcessing.h"
+#include "Framework/AnalysisTask.h"
+#include "Framework/AnalysisDataModel.h"
+#include "Common/DataModel/EventSelection.h"
+#include "Common/Core/TrackSelection.h"
+#include "Common/DataModel/TrackSelectionTables.h"
+
+using namespace o2;
+using namespace o2::framework;
+using namespace o2::framework::expressions;
+
+/*
+//Fwd TRACK
+struct MyTaskFwd {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f));
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::FwdTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+    }
+  }
+};
+*/
+
+struct MyTaskFwd {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f)) ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::FwdTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskFwdnocuts {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 20.0f;
+  //Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f)) ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               aod::FwdTracks const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+
+struct MyTaskFwd10 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f)) && aod::fwdtrack::chi2 < 1.0f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::FwdTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskFwd9 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f)) && aod::fwdtrack::chi2 < 0.9f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::FwdTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskFwd8 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f)) && aod::fwdtrack::chi2 < 0.8f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::FwdTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskFwd7 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f)) && aod::fwdtrack::chi2 < 0.7f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::FwdTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskFwd6 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f)) && aod::fwdtrack::chi2 < 0.6f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::FwdTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskFwd5 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f)) && aod::fwdtrack::chi2 < 0.5f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::FwdTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskFwd4 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f)) && aod::fwdtrack::chi2 < 0.4f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::FwdTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskFwd3 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f)) && aod::fwdtrack::chi2 < 0.3f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::FwdTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskFwd2 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f)) && aod::fwdtrack::chi2 < 0.2f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::FwdTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskFwd1 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f)) && aod::fwdtrack::chi2 < 0.1f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::FwdTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+/*
+struct MyTaskFwd2 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 20.0f;
+  //Filter trackFilter = ((aod::fwdtrack::eta >= -4.0f) && (aod::fwdtrack::eta <= -2.5f));
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               aod::FwdTracks const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+    //problemo with z-vert
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt()); 
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+*/
+
+
+
+/*
+struct MyTaskFwdCUT1 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{100, -4, -2.5, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -4.0f) && ((aod::fwdtrack::eta) <= -2.5f) && (requireGlobalTrackInFilter());
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<soa::Join<aod::FwdTracks, aod::TrackSelection>> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+    }
+  }
+};
+*/
+
+/*
+struct MyTaskFwdCUT2 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{100, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{100, -10, 10, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  //Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  //Filter trackFilter = (aod::track::pt > 0.15f) && (requireGlobalTrackInFilter());
+
+  void process(soa::Join<aod::Collisions, aod::EvSels>::iterator const& collision,
+               aod::FwdTracks const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+    }
+  }
+};
+
+*/
+
+//MFT TRACK
+struct MyTaskMFT {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::MFTTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskMFTnocuts {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 20.0f;
+  //Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               aod::MFTTracks const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+/*
+struct MyTaskMFT2 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 20.0f;
+  //Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f);
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               aod::MFTTracks const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+*/
+struct MyTaskMFT10 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) && aod::fwdtrack::chi2 < 1.0f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::MFTTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskMFT9 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) && aod::fwdtrack::chi2 < 0.9f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::MFTTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskMFT8 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) && aod::fwdtrack::chi2 < 0.8f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::MFTTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+
+struct MyTaskMFT7 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) && aod::fwdtrack::chi2 < 0.7f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::MFTTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+
+struct MyTaskMFT6 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) && aod::fwdtrack::chi2 < 0.6f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::MFTTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+
+struct MyTaskMFT5 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) && aod::fwdtrack::chi2 < 0.5f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::MFTTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+
+struct MyTaskMFT4 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) && aod::fwdtrack::chi2 < 0.4f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::MFTTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+
+struct MyTaskMFT3 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) && aod::fwdtrack::chi2 < 0.3f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::MFTTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+
+struct MyTaskMFT2 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) && aod::fwdtrack::chi2 < 0.2f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::MFTTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+struct MyTaskMFT1 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+      {"chi2Hist", "Track Chi2", {HistType::kTH1F, {{100, 0, 100, "Track Chi2"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) && aod::fwdtrack::chi2 < 0.1f ;
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::MFTTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+      histos.get<TH1>(HIST("chi2Hist"))->Fill(track.chi2());
+    }
+  }
+};
+
+/*
+struct MyTaskMFTCUT1 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{100, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = ((aod::fwdtrack::eta) >= -3.6f) && ((aod::fwdtrack::eta) <= -2.5f) && (requireGlobalTrackInFilter());
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<soa::Join<aod::MFTTracks, aod::TrackSelection>> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+    }
+  }
+};
+
+
+
+struct MyTaskMFTCUT2 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{100, -3.6, -2.5, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}}
+    }
+  };
+  int muonCount = 0;
+
+ // Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+ // Filter trackFilter = (aod::fwdtrack::eta >= -3.6f) && (aod::fwdtrack::eta <= -2.5f) && (aod::fwdtrack::pt > 0.15f) && (requireGlobalTrackInFilter());
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<aod::MFTTracks> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+    }
+  }
+};
+
+*/
+//TRACK
+struct MyTaskTrack {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000, -20, 20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000, 0, 300, "multiplicity"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  Filter trackFilter = (requireGlobalTrackInFilter());
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               soa::Filtered<soa::Join<aod::Tracks, aod::TrackSelection>> const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+    }
+  }
+};
+
+
+struct MyTaskTrack2 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{600, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}},
+    }
+  };
+  int muonCount = 0;
+
+  Filter collisionZFilter = nabs(aod::collision::posZ) < 20.0f;
+  Filter trackFilter = (requireGlobalTrackInFilter());
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+               aod::Tracks const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+    histos.get<TH1>(HIST("zVertexHist"))->Fill(collision.posZ());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+    }
+  }
+};
+
+
+
+
+
+
+
+/*
+struct MyTaskTrackCUT2 {
+  HistogramRegistry histos{
+    "histos",
+    {
+      {"ptHist", "Track PT", {HistType::kTH1F, {{100, 0, 50, "p_{T} (GeV)"}}}},
+      {"phiHist", "Track Phi", {HistType::kTH1F, {{100, -2 * M_PI, 2 * M_PI, "#phi"}}}},
+      {"etaHist", "Track Eta", {HistType::kTH1F, {{100, -6, 6, "#eta"}}}},
+      {"zVertexHist", "Z Vertex Position", {HistType::kTH1F, {{1000,-20,20, "Z Vertex (cm)"}}}},
+      {"multiplicity", "multiplicity", {HistType::kTH1F, {{3000,0,300, "multiplicity"}}}}
+    }
+  };
+  int muonCount = 0;
+
+  //Filter collisionZFilter = nabs(aod::collision::posZ) < 10.0f;
+  //Filter trackFilter = (aod::track::pt > 0.15f) && (requireGlobalTrackInFilter());
+
+  void process(soa::Filtered<soa::Join<aod::Collisions, aod::EvSels>>::iterator const& collision,
+              aod::Tracks const& tracks)
+  {
+    if (!collision.sel8()) {
+      return;
+    }
+
+    histos.get<TH1>(HIST("multiplicity"))->Fill(tracks.size());
+
+    for (auto& track : tracks) {
+      histos.get<TH1>(HIST("ptHist"))->Fill(track.pt());
+      histos.get<TH1>(HIST("phiHist"))->Fill(track.phi());
+      histos.get<TH1>(HIST("etaHist"))->Fill(track.eta());
+    }
+  }
+};
+
+*/
+
+WorkflowSpec defineDataProcessing(ConfigContext const& cfgc) 
+{
+  return WorkflowSpec{
+    adaptAnalysisTask<MyTaskTrack>(cfgc),
+    adaptAnalysisTask<MyTaskTrack2>(cfgc),
+    adaptAnalysisTask<MyTaskFwd>(cfgc),
+    adaptAnalysisTask<MyTaskFwdnocuts>(cfgc),
+    adaptAnalysisTask<MyTaskFwd10>(cfgc),
+    adaptAnalysisTask<MyTaskFwd9>(cfgc),
+    adaptAnalysisTask<MyTaskFwd8>(cfgc),
+    adaptAnalysisTask<MyTaskFwd7>(cfgc),
+    adaptAnalysisTask<MyTaskFwd6>(cfgc),
+    adaptAnalysisTask<MyTaskFwd5>(cfgc),
+    adaptAnalysisTask<MyTaskFwd4>(cfgc),
+    adaptAnalysisTask<MyTaskFwd3>(cfgc),
+    adaptAnalysisTask<MyTaskFwd2>(cfgc),
+    adaptAnalysisTask<MyTaskFwd1>(cfgc),
+    adaptAnalysisTask<MyTaskMFT>(cfgc),
+    adaptAnalysisTask<MyTaskMFTnocuts>(cfgc),
+    adaptAnalysisTask<MyTaskMFT10>(cfgc),
+    adaptAnalysisTask<MyTaskMFT9>(cfgc),
+    adaptAnalysisTask<MyTaskMFT8>(cfgc),
+    adaptAnalysisTask<MyTaskMFT7>(cfgc),
+    adaptAnalysisTask<MyTaskMFT6>(cfgc),
+    adaptAnalysisTask<MyTaskMFT5>(cfgc),
+    adaptAnalysisTask<MyTaskMFT4>(cfgc),
+    adaptAnalysisTask<MyTaskMFT3>(cfgc),
+    adaptAnalysisTask<MyTaskMFT2>(cfgc),
+    adaptAnalysisTask<MyTaskMFT1>(cfgc)
+  };
+}
+
+
