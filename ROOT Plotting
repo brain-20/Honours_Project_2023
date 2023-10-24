@@ -1,0 +1,116 @@
+#########################################################
+ROOT code used to overlay and plot O2 figures.
+#########################################################
+
+#include <iostream>
+#include <TFile.h>
+#include <TH1F.h>
+#include <TCanvas.h>
+#include <TLegend.h>
+
+void divideHistogramBinsByConstant(TH1F* hist, double constant) {
+  int numBins = hist->GetNbinsX();
+  for (int i = 1; i <= numBins; ++i) {
+    double binContent = hist->GetBinContent(i);
+    hist->SetBinContent(i, binContent / constant);
+  }
+}
+
+void overlayHistograms(const char* inputFileName, const char* outputFilePath, double divisionConstant) {
+  // Open the input ROOT file
+  TFile* inputFile = TFile::Open(inputFileName);
+
+  if (!inputFile || inputFile->IsZombie()) {
+    std::cerr << "Error: Unable to open input file: " << inputFileName << std::endl;
+    return;
+  }
+
+  // List of directories to consider for overlay
+  const char* directories[] = {"my-task-track","my-task-m-f-t3","my-task-fwd3"};
+  const int numDirectories = 3;
+
+  // New legend labels
+  const char* legendLabels[] = {
+    "Tracks with TrackSelection",
+    "MFTTracks (-3.6 < #eta < -2.5, #chi^{2} < 3 )",
+    "FwdTracks (-4.0 < #eta < -2.5, #chi^{2} < 3 )"
+};
+
+  // Define an array of custom titles for each canvas
+  const char* canvasTitles[] = {"Custom Title 1", "Custom Title 2", "Custom Title 3", "Custom Title 4", "Custom Title 5","Custom Title 5"};
+
+  // Loop through each variable (PT, Phi, Eta)
+  const char* variables[] = {"ptHist", "phiHist", "etaHist", "zVertexHist", "multiplicity"};
+  const int numVariables = 5;
+
+  for (int iVar = 0; iVar < numVariables; ++iVar) {
+    const char* variable = variables[iVar];
+
+    // Create a new canvas for the current variable with a custom title
+    TCanvas* canvas = new TCanvas(variable, canvasTitles[iVar], 800, 600);
+    canvas->SetLeftMargin(0.12);
+    canvas->SetRightMargin(0.05);
+    canvas->SetTopMargin(0.08);
+    canvas->SetBottomMargin(0.12);
+
+    // Create a legend to label the histograms
+    TLegend* legend = new TLegend(0.7, 0.7, 0.9, 0.9);
+
+    // Loop through each directory
+    for (int iDir = 0; iDir < numDirectories; ++iDir) {
+      const char* directory = directories[iDir];
+
+      // Get the histogram from the specified directory
+      TH1F* hist = dynamic_cast<TH1F*>(inputFile->Get(Form("%s/%s", directory, variable)));
+
+      if (!hist) {
+        std::cerr << "Error: Histogram not found for variable " << variable << " and directory " << directory << std::endl;
+        continue;
+      }
+
+      // Divide the histogram bins by the constant value
+      divideHistogramBinsByConstant(hist, divisionConstant);
+
+      // Set histogram colors based on the directory index
+      hist->SetLineColor(iDir + 1); // Different color for each directory
+
+      // Adjust the y-axis range to ensure the full histogram is visible
+      double maxBinContent = hist->GetBinContent(hist->GetMaximumBin());
+      double yMax = maxBinContent + 1800.0 * maxBinContent; // Adjust the range as needed
+      hist->GetYaxis()->SetRangeUser(0, yMax);
+
+    // Set custom X and Y axis labels in LaTeX math mode
+    hist->GetXaxis()->SetTitle("p_{T}");
+    hist->GetYaxis()->SetTitle("N_{Tracks}");
+
+      // Draw the histogram on the current canvas
+      if (iDir == 0) {
+        hist->Draw();
+      } else {
+        hist->Draw("same");
+      }
+
+      // Add labels to the legend using the new legendLabels array
+      legend->AddEntry(hist, legendLabels[iDir], "l");
+    }
+
+    // Draw the legend
+    legend->Draw();
+
+    // Save the canvas as a ROOT file
+    TFile* outputFile = TFile::Open(Form("%s/%s.root", outputFilePath, variable), "RECREATE");
+    canvas->Write();
+    outputFile->Close();
+
+    // Clean up
+    delete canvas;
+  }
+
+  inputFile->Close();
+}
+
+int main() {
+  double divisionConstant = 1.0; // Replace with your desired constant value
+  overlayHistograms("/home/joyful/Downloads/Analysis.ChiCutsFinal.root", "/home/joyful/Downloads", divisionConstant);
+  return 0;
+}
